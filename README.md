@@ -1,5 +1,5 @@
 # About this API
-This is a wrapper of the Pterodactyl API, made for Java, specifically designed for the LuckyVN network server's structure.
+This is a wrapper of the Pterodactyl API, made for Java, specifically designed for the LuckyVN network server's structure, with Pterodactyl as a core component
 
 This wrapper uses the Pterodactyl documentation as reference, which can be found <a href="https://dashflo.net/docs/api/pterodactyl/v1/">here</a>.
 
