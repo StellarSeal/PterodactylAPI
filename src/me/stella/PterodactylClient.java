@@ -1,7 +1,7 @@
 package me.stella;
 
-import me.stella.service.MultithreadedStream;
 import me.stella.service.PanelCommunication;
+import me.stella.wrappers.FileWrapper;
 import me.stella.wrappers.PropertyPair;
 import me.stella.wrappers.ResourceWrapper;
 import me.stella.wrappers.ServerWrapper;
@@ -15,10 +15,7 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 public class PterodactylClient {
 
@@ -49,7 +46,7 @@ public class PterodactylClient {
     public CompletableFuture<ResourceWrapper> getResourceUsage(ServerWrapper server) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                JSONObject resourceObject = PanelCommunication.requestResponseEndpointWithProperty("servers/" + server.getIdentifier() + "/resources",
+                JSONObject resourceObject = PanelCommunication.requestResponseEndpointWithProperty(buildClientEndpoint("servers/" + server.getIdentifier() + "/resources"),
                         "GET", this.clientKey, null);
                 ServerStatus status = ServerStatus.parse(String.valueOf(((JSONObject)resourceObject.get("attributes")).get("current_state")));
                 JSONObject resources = (JSONObject) ((JSONObject) resourceObject.get("attributes")).get("resources");
@@ -63,79 +60,104 @@ public class PterodactylClient {
         });
     }
 
-    public CompletableFuture<File> downloadFile(ServerWrapper server, String source, File destination, int threads) {
+    public CompletableFuture<List<FileWrapper>> getFiles(ServerWrapper server, String directory) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                JSONObject fileResponseObject = PanelCommunication.requestResponseEndpointWithParameter(buildClientEndpoint("servers/" + server.getIdentifier() + "/files/list"),
+                        "GET", this.clientKey, Collections.singletonList(PropertyPair.parse("directory", directory)));
+                List<FileWrapper> files = new ArrayList<>();
+                JSONArray jsonFileResponse = (JSONArray) fileResponseObject.get("data");
+                for(int i = 0; i < jsonFileResponse.size(); i++) {
+                    JSONObject fileInfo = (JSONObject) ((JSONObject) jsonFileResponse.get(i)).get("attributes");
+                    String name = String.valueOf(fileInfo.get("name"));
+                    long size = Long.parseLong(String.valueOf(fileInfo.get("size")));
+                    boolean file = Boolean.parseBoolean(String.valueOf(fileInfo.get("is_file")));
+                    String creation = String.valueOf(fileInfo.get("created_at"));
+                    String lastEdit = String.valueOf(fileInfo.get("modified_at"));
+                    files.add(new FileWrapper(name, size, file, creation, lastEdit));
+                }
+                return files;
+            } catch(Throwable t) { t.printStackTrace(); }
+            return null;
+        });
+    }
+
+    public CompletableFuture<File> downloadFile(ServerWrapper server, String source, File destination) {
         if(!destination.isDirectory())
             throw new RuntimeException("Please supply a folder, not a file for this function !");
         return CompletableFuture.supplyAsync(() -> {
            try {
-               String[] dir = source.split("/"); String fileName = dir[dir.length - 1];
-               JSONObject downloadPayload = PanelCommunication.requestResponseEndpointWithProperty(
+               String[] dir = source.split( "/"); String fileName = dir[dir.length - 1];
+               JSONObject downloadPayload = PanelCommunication.requestResponseEndpointWithParameter(
                        buildClientEndpoint("servers/" + server.getIdentifier() + "/files/download"), "GET", this.clientKey,
-                       PropertyPair.parse("file", source));
+                       Collections.singletonList(PropertyPair.parse("file", source)));
                final String downloadURL = String.valueOf(((JSONObject)downloadPayload.get("attributes")).get("url"));
                URL downloadReadURL = new URL(downloadURL);
-               HttpURLConnection cachingConnection = (HttpURLConnection) downloadReadURL.openConnection();
-               cachingConnection.setRequestMethod("HEAD");
-               long contentSize = cachingConnection.getContentLengthLong();
-               ExecutorService threadBuilder = Executors.newFixedThreadPool(threads);
-               long[] partSizes = MultithreadedStream.getSegmentSize(contentSize, threads);
-               List<Future<?>> parts = new ArrayList<>();
-               Map<Integer, File> downloadedPart = new HashMap<>();
-               long read = -1;
-               for(int i = 0; i < partSizes.length; i++) {
-                   final long byteStart = read + 1;
-                   final long byteEnd = read + partSizes[i];
-                   final int index = i + 1;
-                   parts.add(threadBuilder.submit(() -> {
-                       MultithreadedStream.downloadSegment(destination, downloadURL, byteStart, byteEnd)
-                               .thenAccept(file -> downloadedPart.put(index, file));
-                   }));
-                   read += partSizes[i];
-               }
-               for(Future<?> tasks: parts)
-                   tasks.get();
+               InputStream downloadStream = downloadReadURL.openStream();
+               BufferedInputStream streamReader = new BufferedInputStream(downloadStream);
                File output = new File(destination, fileName);
-               BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(output));
-               for(int x = 1; x <= partSizes.length; x++) {
-                   BufferedInputStream partReader = new BufferedInputStream(new FileInputStream(downloadedPart.get(x)));
-                   byte[] buffer = new byte[65536]; int data;
-                   while((data = partReader.read(buffer)) != -1)
-                       outputStream.write(buffer, 0, data);
-                   partReader.close();
-               }
-               outputStream.flush(); outputStream.close(); threadBuilder.shutdown();
+               FileOutputStream outputStream = new FileOutputStream(output);
+               byte[] buffer = new byte[65536]; int data;
+               while((data = streamReader.read(buffer, 0, 65536)) != -1)
+                   outputStream.write(buffer, 0, data);
+               outputStream.flush(); outputStream.close(); streamReader.close(); downloadStream.close();
                return output.getAbsoluteFile();
            } catch(Throwable t) { t.printStackTrace(); }
            return null;
         });
     }
 
-    public CompletableFuture<String> uploadFile(ServerWrapper server, File file, int threads) {
-        if(!file.isFile())
-            throw new RuntimeException("Please supply a valid file! Not a direcctory.");
+    public CompletableFuture<String> uploadFile(ServerWrapper server, String directory, File file) {
+        if (!file.isFile()) throw new RuntimeException("Invalid file.");
         return CompletableFuture.supplyAsync(() -> {
+            HttpURLConnection connection = null;
             try {
-                JSONObject downloadPayload = PanelCommunication.requestResponseEndpointWithProperty(
+                getFiles(server, directory).join();
+                JSONObject uploadPayload = PanelCommunication.requestResponseEndpointWithProperty(
                         buildClientEndpoint("servers/" + server.getIdentifier() + "/files/upload"), "GET", this.clientKey, null);
-                final String uploadURL = String.valueOf(((JSONObject)downloadPayload.get("attributes")).get("url"));
-                long[] segments = MultithreadedStream.getSegmentSize(file.length(), threads);
-                ExecutorService threadFactory = Executors.newFixedThreadPool(threads);
-                List<Future<?>> tasks = new ArrayList<>(); long byteCount = -1;
-                for (long segment : segments) {
-                    final long byteStart = byteCount + 1;
-                    final long byteEnd = byteCount + segment;
-                    tasks.add(threadFactory.submit(() -> {
-                        MultithreadedStream.uploadSegment(file, uploadURL, byteStart, byteEnd).join();
-                    }));
-                    byteCount += segment;
+                String uploadURL = String.valueOf(((JSONObject) uploadPayload.get("attributes")).get("url"));
+                String boundary = "----WebKitFormBoundary" + UUID.randomUUID().toString().replaceAll("-", "");
+                URL url = new URL(uploadURL);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("POST");
+                connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+                connection.setDoOutput(true);
+
+                try (OutputStream outputStream = connection.getOutputStream(); FileInputStream fileInput = new FileInputStream(file)) {
+                    String formDataHeader = "--" + boundary + "\r\n" +
+                            "Content-Disposition: form-data; name=\"files\"; filename=\"" + file.getName() + "\"\r\n" +
+                            "Content-Type: application/octet-stream\r\n\r\n";
+                    outputStream.write(formDataHeader.getBytes());
+
+                    byte[] buffer = new byte[65536];
+                    int bytesRead;
+                    while ((bytesRead = fileInput.read(buffer)) != -1) {
+                        outputStream.write(buffer, 0, bytesRead);
+                    }
+
+                    String formDataFooter = "\r\n--" + boundary + "--\r\n";
+                    outputStream.write(formDataFooter.getBytes());
+                    outputStream.flush();
                 }
-                for(Future<?> running: tasks)
-                    running.get();
-                return file.getName();
-            } catch(Throwable t) { t.printStackTrace(); }
+
+                int responseCode = connection.getResponseCode();
+                if (responseCode != HttpURLConnection.HTTP_OK) {
+                    try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getErrorStream()))) {
+                        StringBuilder response = new StringBuilder(); String inputLine;
+                        while ((inputLine = in.readLine()) != null) response.append(inputLine);
+                        throw new RuntimeException("Upload failed! Code: " + responseCode + " - Trace:" + response);
+                    }
+                }
+                return (directory + "/" + file.getName()).replace("//", "/");
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                if (connection != null) connection.disconnect();
+            }
             return null;
         });
     }
+
 
     public CompletableFuture<Boolean> deleteFile(ServerWrapper server, String target) {
         return deleteFiles(server, Collections.singletonList(target));
@@ -193,7 +215,7 @@ public class PterodactylClient {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 return PanelCommunication.requestCodeEndpointWithProperty(buildClientEndpoint("servers/" + server.getIdentifier() + "/power"),
-                        "POST", this.clientKey, PropertyPair.parse("signal", signal.name().toLowerCase())) == 204;
+                        "POST", this.clientKey, Collections.singletonList(PropertyPair.parse("signal", signal.name().toLowerCase()))) == 204;
             } catch(Throwable t) { t.printStackTrace(); }
             return false;
         });

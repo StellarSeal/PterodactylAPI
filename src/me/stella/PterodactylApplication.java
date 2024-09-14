@@ -10,7 +10,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
+/**
+ * A wrapper representing a panel app using the Pterodactyl API
+ *
+ * @author Stella
+ */
 public class PterodactylApplication {
 
     private final String panelEndpoint;
@@ -60,6 +66,19 @@ public class PterodactylApplication {
                 for(ServerWrapper wrapper: servers) {
                     if(wrapper.getName().equals(name))
                         return wrapper;
+                }
+            } catch(Throwable t) { t.printStackTrace(); }
+            return null;
+        });
+    }
+
+    public CompletableFuture<ServerWrapper> getServerByFilter(Function<ServerWrapper, Boolean> filter) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                List<ServerWrapper> servers = getServers().join();
+                for(ServerWrapper server: servers) {
+                    if(filter.apply(server))
+                        return server;
                 }
             } catch(Throwable t) { t.printStackTrace(); }
             return null;
