@@ -14,7 +14,7 @@ Depending on your use case, you can use either <a href="https://github.com/LUCKY
 PterodactylApplication application = new PterodactylApplication(YOUR_PANEL_URL, YOUR_APPLICATION_KEY);
 ```
 ```java
-PterodactylClient client = new PterodactylClient(YOUR_PANEL_URL, YOUR_APPLICATION_KEY);
+PterodactylClient client = new PterodactylClient(YOUR_PANEL_URL, YOUR_CLIENT_KEY);
 ```
 
 # Example
