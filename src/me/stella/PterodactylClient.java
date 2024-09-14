@@ -112,7 +112,6 @@ public class PterodactylClient {
         return CompletableFuture.supplyAsync(() -> {
             HttpURLConnection connection = null;
             try {
-                getFiles(server, directory).join();
                 JSONObject uploadPayload = PanelCommunication.requestResponseEndpointWithProperty(
                         buildClientEndpoint("servers/" + server.getIdentifier() + "/files/upload"), "GET", this.clientKey, null);
                 String uploadURL = String.valueOf(((JSONObject) uploadPayload.get("attributes")).get("url"));
