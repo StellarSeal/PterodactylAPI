@@ -72,16 +72,18 @@ public class PterodactylApplication {
         });
     }
 
-    public CompletableFuture<ServerWrapper> getServerByFilter(Function<ServerWrapper, Boolean> filter) {
+    public CompletableFuture<List<ServerWrapper>> getServersByFilter(Function<ServerWrapper, Boolean> filter) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 List<ServerWrapper> servers = getServers().join();
+                List<ServerWrapper> filtered = new ArrayList<>();
                 for(ServerWrapper server: servers) {
                     if(filter.apply(server))
-                        return server;
+                        filtered.add(server);
                 }
+                return filtered;
             } catch(Throwable t) { t.printStackTrace(); }
-            return null;
+            return Collections.emptyList();
         });
     }
 
