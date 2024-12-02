@@ -1,6 +1,7 @@
 package me.stella;
 
 import me.stella.service.PanelCommunication;
+import me.stella.wrappers.PropertyPair;
 import me.stella.wrappers.ServerWrapper;
 import me.stella.wrappers.enums.APIModule;
 import org.json.simple.JSONArray;
@@ -30,8 +31,8 @@ public class PterodactylApplication {
     public CompletableFuture<List<ServerWrapper>> getServers() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                JSONObject response = PanelCommunication.requestResponseEndpointWithProperty(buildApplicationEndpoint("servers"),
-                        "GET", this.appKey, null);
+                JSONObject response = PanelCommunication.requestResponseEndpointWithParameter(buildApplicationEndpoint("servers"),
+                        "GET", this.appKey, Collections.singletonList(PropertyPair.parse("per_page", "255")));
                 JSONArray serverList = (JSONArray) response.get("data");
                 List<ServerWrapper> wrappers = new ArrayList<>();
                 for(int i = 0; i < serverList.size(); i++) {
