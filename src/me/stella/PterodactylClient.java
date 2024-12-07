@@ -64,7 +64,7 @@ public class PterodactylClient {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 JSONObject fileResponseObject = PanelCommunication.requestResponseEndpointWithParameter(buildClientEndpoint("servers/" + server.getIdentifier() + "/files/list"),
-                        "GET", this.clientKey, Collections.singletonList(PropertyPair.parse("directory", directory)));
+                        "GET", this.clientKey, Arrays.asList(PropertyPair.parse("directory", directory), PropertyPair.parse("per_page", "255")));
                 List<FileWrapper> files = new ArrayList<>();
                 JSONArray jsonFileResponse = (JSONArray) fileResponseObject.get("data");
                 for(int i = 0; i < jsonFileResponse.size(); i++) {
