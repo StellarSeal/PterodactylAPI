@@ -107,6 +107,24 @@ public class PterodactylClient {
         });
     }
 
+    @SuppressWarnings("unchecked")
+    public CompletableFuture<String> renameFile(ServerWrapper wrapper, String oldName, String newName) {
+        return CompletableFuture.supplyAsync(() -> {
+           try {
+               JSONObject payload = new JSONObject();
+               JSONArray files = new JSONArray();
+               payload.put("root", "/");
+               JSONObject moveExp = new JSONObject();
+               moveExp.put("from", oldName);
+               moveExp.put("to", newName);
+               files.add(moveExp);
+               payload.put("files", files);
+               return newName;
+           } catch(Exception err) { err.printStackTrace(); }
+           return oldName;
+        });
+    }
+
     public CompletableFuture<String> uploadFile(ServerWrapper server, String directory, File file) {
         if (!file.isFile()) throw new RuntimeException("Invalid file.");
         return CompletableFuture.supplyAsync(() -> {
@@ -147,11 +165,14 @@ public class PterodactylClient {
                         throw new RuntimeException("Upload failed! Code: " + responseCode + " - Trace:" + response);
                     }
                 }
-                return (directory + "/" + file.getName()).replace("//", "/");
+                String dest = directory + "/" + file.getName();
+                renameFile(server, file.getName(), dest).join();
+                return dest;
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
-                if (connection != null) connection.disconnect();
+                if (connection != null)
+                    connection.disconnect();
             }
             return null;
         });
@@ -162,6 +183,7 @@ public class PterodactylClient {
         return deleteFiles(server, Collections.singletonList(target));
     }
 
+    @SuppressWarnings("unchecked")
     public CompletableFuture<Boolean> deleteFiles(ServerWrapper server, List<String> targets) {
         return CompletableFuture.supplyAsync(() -> {
             try {
