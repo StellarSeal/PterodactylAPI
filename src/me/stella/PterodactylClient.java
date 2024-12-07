@@ -119,6 +119,9 @@ public class PterodactylClient {
                moveExp.put("to", newName);
                files.add(moveExp);
                payload.put("files", files);
+               PanelCommunication.requestCodeEndpointWithPayload(buildClientEndpoint("servers/" + wrapper.getIdentifier() + "/files/rename"),
+                       "PUT", this.clientKey, payload);
+
                return newName;
            } catch(Exception err) { err.printStackTrace(); }
            return oldName;
