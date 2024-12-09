@@ -82,6 +82,19 @@ public class PterodactylClient {
         });
     }
 
+    public CompletableFuture<Boolean> sendConsoleCommand(ServerWrapper wrapper, String command) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                JSONObject payloadCommand = new JSONObject();
+                payloadCommand.put("command", command);
+                int response = PanelCommunication.requestCodeEndpointWithPayload(buildClientEndpoint("servers/" + wrapper.getIdentifier() + "/command"),
+                        "POST", this.clientKey, payloadCommand);
+                return response != 502;
+            } catch(Exception err) { err.printStackTrace(); }
+            return false;
+        });
+    }
+
     public CompletableFuture<File> downloadFile(ServerWrapper server, String source, File destination) {
         if(!destination.isDirectory())
             throw new RuntimeException("Please supply a folder, not a file for this function !");
