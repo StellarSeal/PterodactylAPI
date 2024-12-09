@@ -17,7 +17,10 @@ PterodactylApplication application = new PterodactylApplication(YOUR_PANEL_URL, 
 PterodactylClient client = new PterodactylClient(YOUR_PANEL_URL, YOUR_CLIENT_KEY);
 ```
 
-# Example
+> [!TIP]
+> For methods returning a **CompletableFuture**, use the **join()** function to force the thread to complete the task before shutting down.
+
+# Example - Using PterodactylApplication
 
 ## Get a list of your servers
 ```java
@@ -28,19 +31,75 @@ application.getServers().thenAccept(serverList -> {
 }).join();
 ```
 
-## Start/Stop a multiple servers with similar names
+## Get a server by their name (must be exact match - case-sensitive)
 ```java
-application.getServersByFilter((server) -> server.getName().contains("BEDWARS"))
-  .thenAccept(servers -> {
-    servers.forEach(client::stopServer);
-  });
-System.out.println("Stopped all BedWars servers!");
+application.getServerByName("BEDWARS").thenAccept(server -> {
+    System.out.println("Server " + server.getName() + " - Identifier: " + server.getIdentifier());
+}).join();
+```
 
-application.getServersByFilter((server) -> server.getName().contains("BEDWARS"))
-  .thenAccept(servers -> {
-    servers.forEach(client::startServer);
-  });
-System.out.println("Started all BedWars servers!");
+### Get a server by their identifier (Found in URL: http://<panel_url>/<server_identifier>)
+```java
+application.getServerByIdentifier("a312072c").thenAccept(server -> {
+    System.out.println("Server " + server.getName() + " - Identifier: " + server.getIdentifier());
+}).join();
+```
+
+### Get a server using a custom filter
+```java
+// Get servers whose name starts with [181]:
+application.getServerByFilter((server) -> {
+    String name = server.getName();
+    return name.startsWith("[181]");
+}).thenAccept(server -> {
+    System.out.println("Server " + server.getName() + ":" + server.getIdentifier() + " has name starting with [181]")
+}).join();
+
+// Get servers whose identifier contains the letter 'b'
+application.getServerByFilter((server) -> {
+    String id = server.getIdentifier();
+    return id.contains("b")
+}).thenAccept(server -> {
+    System.out.println("Server " + server.getName() + ":" + server.getIdentifier() + " has a 'b' in their identifier!")
+}).join();
+```
+
+
+# Example - Using PterodactylClient
+
+### Changing a server's power signal
+
+```java
+// Starting a server
+client.startServer(server).join();
+
+// Stopping a server
+client.startServer(server).join();
+
+// Restarting a server
+client.startServer(server).join();
+
+// Killing a server
+client.startServer(server).join();
+```
+
+### Getting a server's status / Resource usage
+```java
+client.getResourceUsage(server).thenAccept(usage -> {
+    System.out.println("Server status > " + usage.getStatus());
+    System.out.println("RAM usage > " + usage.getMemoryUsage() + " bytes");
+    System.out.println("Get CPU usage > " + usage.getCpuUsage() + "%");
+    System.out.println("Network (Inbound): " + usage.getBytesInbound() + " b/s");
+    System.out.println("Network (Outbound): " + usage.getBytesOutbound() + " b/s");
+}).join();
+```
+
+### Sending a console command
+```java
+client.sendConsoleCommand(server, "bc sup").thenAccept(val -> {
+  if(val)
+    System.out.println("Said 'sup' to the " + server.getName() + " server node!");
+}).join();
 ```
 
 Any further usages can be explored via the source code, or with your IDE :)
