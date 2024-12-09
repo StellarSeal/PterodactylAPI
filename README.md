@@ -51,16 +51,20 @@ application.getServerByIdentifier("a312072c").thenAccept(server -> {
 application.getServerByFilter((server) -> {
     String name = server.getName();
     return name.startsWith("[181]");
-}).thenAccept(server -> {
-    System.out.println("Server " + server.getName() + ":" + server.getIdentifier() + " has name starting with [181]")
+}).thenAccept(servers -> {
+    servers.forEach(server -> {
+        System.out.println("Server " + server.getName() + ":" + server.getIdentifier() + " has their name starts with [181]");
+    });
 }).join();
 
 // Get servers whose identifier contains the letter 'b'
 application.getServerByFilter((server) -> {
     String id = server.getIdentifier();
     return id.contains("b")
-}).thenAccept(server -> {
-    System.out.println("Server " + server.getName() + ":" + server.getIdentifier() + " has a 'b' in their identifier!")
+}).thenAccept(servers -> {
+    servers.forEach(server -> {
+        System.out.println("Server " + server.getName() + ":" + server.getIdentifier() + " has a 'b' in their identifier!");
+    });
 }).join();
 ```
 
