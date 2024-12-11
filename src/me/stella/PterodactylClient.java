@@ -185,6 +185,7 @@ public class PterodactylClient {
                 if(!directory.isEmpty()) {
                     deleteFile(server, dest).join();
                     renameFile(server, file.getName(), dest).join();
+                    // bleh
                 }
                 return dest;
             } catch (IOException e) {
