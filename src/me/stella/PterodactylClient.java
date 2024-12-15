@@ -1,10 +1,7 @@
 package me.stella;
 
 import me.stella.service.PanelCommunication;
-import me.stella.wrappers.FileWrapper;
-import me.stella.wrappers.PropertyPair;
-import me.stella.wrappers.ResourceWrapper;
-import me.stella.wrappers.ServerWrapper;
+import me.stella.wrappers.*;
 import me.stella.wrappers.enums.APIModule;
 import me.stella.wrappers.enums.ServerSignal;
 import me.stella.wrappers.enums.ServerStatus;
@@ -155,7 +152,6 @@ public class PterodactylClient {
                 connection.setRequestMethod("POST");
                 connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
                 connection.setDoOutput(true);
-
                 try (OutputStream outputStream = connection.getOutputStream(); FileInputStream fileInput = new FileInputStream(file)) {
                     String formDataHeader = "--" + boundary + "\r\n" +
                             "Content-Disposition: form-data; name=\"files\"; filename=\"" + file.getName() + "\"\r\n" +
@@ -247,6 +243,54 @@ public class PterodactylClient {
                 payload.put("file", target);
                 return PanelCommunication.requestCodeEndpointWithPayload(buildClientEndpoint("servers/" + server.getIdentifier() + "/files/decompress"),
                         "POST", this.clientKey, payload) == 204;
+            } catch(Throwable t) { t.printStackTrace(); }
+            return false;
+        });
+    }
+
+    public CompletableFuture<List<BackupWrapper>> getBackups(ServerWrapper server) {
+        return CompletableFuture.supplyAsync(() -> {
+           try {
+               List<BackupWrapper> backups = new ArrayList<>();
+               JSONObject response = PanelCommunication.requestResponseEndpointWithParameter(buildClientEndpoint("servers/" + server.getIdentifier() + "/backups"),
+                       "GET", this.clientKey, Collections.singletonList(PropertyPair.parse("per_page", "64")));
+               JSONArray backupJSONArray = (JSONArray) response.get("data");
+               for(Object arrayElementObject: backupJSONArray) {
+                   JSONObject backupJSONObject = (JSONObject) arrayElementObject;
+                   JSONObject attributes = (JSONObject) backupJSONObject.get("attributes");
+                   UUID uid = UUID.fromString(String.valueOf(attributes.get("uuid")));
+                   String name = String.valueOf(attributes.get("name"));
+                   String sha256_hash = String.valueOf(attributes.get("sha256_hash"));
+                   long byteSize = Long.parseLong(String.valueOf(attributes.get("bytes")));
+                   String created = String.valueOf(attributes.get("created_at"));
+                   String completed = String.valueOf(attributes.get("completed_at"));
+                   backups.add(new BackupWrapper(uid, name, sha256_hash, byteSize, created, completed));
+               }
+               return backups;
+           } catch(Exception err) { err.printStackTrace(); }
+           return Collections.emptyList();
+        });
+    }
+
+    public CompletableFuture<Boolean> createBackup(ServerWrapper server, String name) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("name", name);
+                payload.put("ignored", "");
+                payload.put("is_locked", false);
+                return PanelCommunication.requestCodeEndpointWithPayload(buildClientEndpoint("servers/" + server.getIdentifier() + "/backups"),
+                        "POST", this.clientKey, payload) == 204;
+            } catch(Throwable t) { t.printStackTrace(); }
+            return false;
+        });
+    }
+
+    public CompletableFuture<Boolean> deleteBackup(ServerWrapper server, BackupWrapper backup) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return PanelCommunication.requestCodeEndpointWithParameter(buildClientEndpoint("servers/" + server.getIdentifier() + "/backups/" + backup.getUid().toString()),
+                        "DELETE", this.clientKey, null) == 204;
             } catch(Throwable t) { t.printStackTrace(); }
             return false;
         });
