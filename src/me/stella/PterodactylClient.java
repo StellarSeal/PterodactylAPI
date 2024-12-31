@@ -299,8 +299,10 @@ public class PterodactylClient {
     private CompletableFuture<Boolean> sendSignal(ServerWrapper server, ServerSignal signal) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                return PanelCommunication.requestCodeEndpointWithProperty(buildClientEndpoint("servers/" + server.getIdentifier() + "/power"),
-                        "POST", this.clientKey, Collections.singletonList(PropertyPair.parse("signal", signal.name().toLowerCase()))) == 204;
+                JSONObject payload = new JSONObject();
+                payload.put("signal", signal.name().toLowerCase());
+                return PanelCommunication.requestCodeEndpointWithPayload(buildClientEndpoint("servers/" + server.getIdentifier() + "/power"),
+                        "POST", this.clientKey, payload) == 204;
             } catch(Throwable t) { t.printStackTrace(); }
             return false;
         });
