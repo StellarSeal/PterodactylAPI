@@ -11,10 +11,10 @@ To fully utilize the API, you'll need a `Client Key` and an `Application Key`, w
 
 Depending on your use case, you can use either <a href="https://github.com/LUCKYVN-NETWORK/PterodactylAPI/blob/main/src/me/stella/PterodactylApplication.java">PterodactylApplication</a> or <a href="https://github.com/LUCKYVN-NETWORK/PterodactylAPI/blob/main/src/me/stella/PterodactylClient.java">PterodactylClient</a>.
 ```java
-PterodactylApplication application = new PterodactylApplication(YOUR_PANEL_URL, YOUR_APPLICATION_KEY);
+PterodactylApplication application = new PterodactylApplication(RequestProtocol.HTTP, YOUR_PANEL_URL, YOUR_APPLICATION_KEY);
 ```
 ```java
-PterodactylClient client = new PterodactylClient(YOUR_PANEL_URL, YOUR_CLIENT_KEY);
+PterodactylClient client = new PterodactylClient(RequestProtocol.HTTP, YOUR_PANEL_URL, YOUR_CLIENT_KEY);
 ```
 
 > [!TIP]
