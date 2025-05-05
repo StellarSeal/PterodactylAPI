@@ -3,6 +3,7 @@ package me.stella;
 import me.stella.service.PanelCommunication;
 import me.stella.wrappers.*;
 import me.stella.wrappers.enums.APIModule;
+import me.stella.wrappers.enums.RequestProtocol;
 import me.stella.wrappers.enums.ServerSignal;
 import me.stella.wrappers.enums.ServerStatus;
 import org.json.simple.JSONArray;
@@ -16,10 +17,12 @@ import java.util.concurrent.*;
 
 public class PterodactylClient {
 
+    private final RequestProtocol protocol;
     private final String panelEndpoint;
     private final String clientKey;
 
-    public PterodactylClient(String panelEndpoint, String clientKey) {
+    public PterodactylClient(RequestProtocol protocol, String panelEndpoint, String clientKey) {
+        this.protocol = protocol;
         this.panelEndpoint = panelEndpoint;
         this.clientKey = clientKey;
     }
@@ -57,11 +60,11 @@ public class PterodactylClient {
         });
     }
 
-    public CompletableFuture<List<FileWrapper>> getFiles(ServerWrapper server, String directory) {
+    public CompletableFuture<List<FileWrapper>> getFiles(ServerWrapper server, String directory, int pageLimit) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 JSONObject fileResponseObject = PanelCommunication.requestResponseEndpointWithParameter(buildClientEndpoint("servers/" + server.getIdentifier() + "/files/list"),
-                        "GET", this.clientKey, Arrays.asList(PropertyPair.parse("directory", directory), PropertyPair.parse("per_page", "255")));
+                        "GET", this.clientKey, Arrays.asList(PropertyPair.parse("directory", directory), PropertyPair.parse("per_page", Integer.toString(pageLimit))));
                 List<FileWrapper> files = new ArrayList<>();
                 JSONArray jsonFileResponse = (JSONArray) fileResponseObject.get("data");
                 for(int i = 0; i < jsonFileResponse.size(); i++) {
@@ -309,7 +312,7 @@ public class PterodactylClient {
     }
 
     private String buildClientEndpoint(String operation) {
-        return PanelCommunication.buildRequestEndpoint(this.panelEndpoint, APIModule.CLIENT, operation);
+        return PanelCommunication.buildRequestEndpoint(this.protocol, this.panelEndpoint, APIModule.CLIENT, operation);
     }
 
 }

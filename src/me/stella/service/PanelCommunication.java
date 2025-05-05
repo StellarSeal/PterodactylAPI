@@ -2,6 +2,7 @@ package me.stella.service;
 
 import me.stella.wrappers.PropertyPair;
 import me.stella.wrappers.enums.APIModule;
+import me.stella.wrappers.enums.RequestProtocol;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
@@ -23,8 +24,8 @@ import java.util.List;
  */
 public class PanelCommunication {
 
-    public static String buildRequestEndpoint(String endpoint, APIModule module, String operation) {
-        return "http://" + endpoint + "/" + module.getURL() + "/" + URLEncoder.encode(operation, StandardCharsets.UTF_8);
+    public static String buildRequestEndpoint(RequestProtocol protocol, String endpoint, APIModule module, String operation) {
+        return protocol.getHeader() + endpoint + "/" + module.getURL() + "/" + URLEncoder.encode(operation, StandardCharsets.UTF_8);
     }
 
     public static int requestCodeEndpointWithProperty(String endpoint, String method, String authentication, List<PropertyPair<String, String>> property) {

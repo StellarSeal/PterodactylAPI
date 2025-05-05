@@ -4,6 +4,7 @@ import me.stella.service.PanelCommunication;
 import me.stella.wrappers.PropertyPair;
 import me.stella.wrappers.ServerWrapper;
 import me.stella.wrappers.enums.APIModule;
+import me.stella.wrappers.enums.RequestProtocol;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 
@@ -23,10 +24,12 @@ import java.util.function.Function;
  */
 public class PterodactylApplication {
 
+    private final RequestProtocol protocol;
     private final String panelEndpoint;
     private final String appKey;
 
-    public PterodactylApplication(String panelEndpoint, String clientKey) {
+    public PterodactylApplication(RequestProtocol protocol, String panelEndpoint, String clientKey) {
+        this.protocol = protocol;
         this.panelEndpoint = panelEndpoint;
         this.appKey = clientKey;
     }
@@ -116,7 +119,7 @@ public class PterodactylApplication {
     }
 
     private String buildApplicationEndpoint(String operation) {
-        return PanelCommunication.buildRequestEndpoint(this.panelEndpoint, APIModule.APPLICATION, operation);
+        return PanelCommunication.buildRequestEndpoint(this.protocol, this.panelEndpoint, APIModule.APPLICATION, operation);
     }
 
 }
